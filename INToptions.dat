@@ -1,0 +1,22 @@
+Measurement: INT
+StructureName: Test
+OutputFolder: Z:\Measurements\CIS-Productions\CIS2\W10-IBL2\KIT2e15
+
+xName: t
+y1Name: Is
+
+Location: MPP
+Instrument: Keithley 6517B
+GPIB: 24
+
+StepSize: 1
+StepSizeDown: 1
+StepWait: 0.5
+TargetV: -1
+
+MeasureTime: 299000.
+WaitTime: 0.5
+nAverage: 10
+
+CurrentLimit: 5e-6
+CurrentRange: 2e-3
