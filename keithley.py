@@ -117,7 +117,7 @@ class keithley(object):
       try:
         #initialize and identify
         rm = visa.ResourceManager()
-        print(GPIB_address)
+        self.report("connecting to GPIB address:%i" % GPIB_address)
         self._inst = rm.open_resource("GPIB::%i" % int(GPIB_address))
         self.write("*IDN?")
         #put the keithley in the right operating mode
