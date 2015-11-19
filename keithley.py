@@ -93,7 +93,7 @@ class keithley(object):
       values.append(stop)
       return values
 
-    def ramp(self,start,stop,currentlimit,stepsize=1.,wait=1.,force=True):
+    def ramp(self,start,stop,currentlimit,stepsize=1.,wait=0.,force=False):
       #does the actual ramping
       #first get the right array
       voltages=self.get_ramparray(start,stop,stepsize)
@@ -103,7 +103,7 @@ class keithley(object):
         self.lastV = v
         if not force:
           #check for current limit unless ramping is forced
-          if abs( read(instrument)["current"]) > abs(currentlimit):
+          if abs( self.read()["current"]) > abs(currentlimit):
             print("Current Limit while ramping!! Switching off!")
             #force shutdown!
             self.ramp(v,0.0,currentlimit,stepsize,wait,True)
@@ -112,6 +112,11 @@ class keithley(object):
             return
         time.sleep(wait)
       return
+
+    def set_voltage(self,voltage):
+        self.write(":SOUR:VOLT %f" % (voltage))
+        self.lastV = voltage
+        return
 
     def connect(self, GPIB_address, currentRange):
       try:

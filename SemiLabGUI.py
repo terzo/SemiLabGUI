@@ -48,7 +48,46 @@ def set_voltage():
     if volt>0.0:
       print("WARNING: positive value")
       return
-    ky.ramp(currV,volt,float(tk_setCL.get()),float(tk_setStepSizeUp.get()),float(tk_setStepWait.get()),True)
+    ky.ramp(currV,volt,float(tk_setCL.get()),float(tk_setStepSizeUp.get()),float(tk_setStepWait.get()),False)
+
+def set_voltage2():
+    """Set the target voltage"""
+    try:
+        # if we cannot convert the value to float we don't do anything
+        volt = float(tk_setV.get())
+    except ValueError:
+        print("Cannot convert to float")
+        return
+    # ramp to target voltage 1
+    try:
+      currV = ky.read()["voltage"]
+    except:
+      currV = ky.lastV
+      print("Cannot read voltage")
+      return
+    if volt>0.0:
+      print("WARNING: positive value")
+      return
+    step = float()
+    if volt<currV:
+      step = float(tk_setStepSizeUp.get())
+      volt_tmp = currV-step
+      if volt_tmp<volt:
+        volt_tmp = volt
+    else:
+      step = float(tk_setStepSizeDown.get())
+      volt_tmp = currV+step
+      if volt_tmp>volt:
+         volt_tmp = volt
+
+    #print(step)
+    #ky.lastV = volt_tmp
+    #ky.set_voltage(volt_tmp)
+    ky.ramp(currV,volt_tmp,float(tk_setCL.get()),step,0,False)
+    if volt_tmp!=volt:
+      tk_top.update()
+      time.sleep(float(tk_setStepWait.get()))
+      set_voltage2()
     
 def read_option(filename,option):
   #this method reads always the last value which is defined in the steering file
@@ -99,7 +138,7 @@ def update_periodically():
     global starttime
     # we want to do this every second so register a callback after one second
     # with Tk
-    tk_top.after(1000, update_periodically)
+    tk_top.after(2000, update_periodically)
 
     # get the relative time
     curtime = time.time()
@@ -249,7 +288,7 @@ volt_var = Tkinter.StringVar()
 volt_var.set(0.0)
 tk_setV = Tkinter.Spinbox(tk_ramp, from_=-1100, to=0.0, textvariable=volt_var, width=1)
 tk_setV.grid(row = 2, column = 1, columnspan = 3,  sticky=(Tkinter.E,Tkinter.W))
-tk_setvolt = Tkinter.Button(tk_ramp, text="Ramp\nVoltage", command=set_voltage, padx=20, pady=15, state=Tkinter.DISABLED)
+tk_setvolt = Tkinter.Button(tk_ramp, text="Ramp\nVoltage", command=set_voltage2, padx=20, pady=15, state=Tkinter.DISABLED)
 tk_setvolt.grid(row = 0, column = 4, rowspan =3, sticky=(Tkinter.E,Tkinter.W))
 tk_ramp.pack(fill=Tkinter.X)
 
