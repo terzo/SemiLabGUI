@@ -49,9 +49,9 @@ class keithley(object):
           output=self._inst.read()
         else:
           self.report("READ?")
-          output="%e ADC, %fCext, %f hum" %(random.random()*1.e-9,random.random(),random.random())
+          output="%f, %f, %f, %f" %(random.random()*1.e-9,random.random(),random.random())
         #parse the values
-        #print(output)
+        self.report(output)
         reading["voltage"]=float(output.split(",")[0])
         reading["current"]=float(output.split(",")[1].split(",")[0])
         reading["temperature"]=float(output.split(",")[2].split(",")[0])
@@ -64,7 +64,7 @@ class keithley(object):
           self.report("READ?")
           output="%e ADC, %fCext, %f hum" %(random.random()*1.e-9,random.random(),random.random())
         #parse the values
-        print(output)
+        self.report(output)
         reading["voltage"]=self.lastV
         reading["current"]=float(output.split("ADC")[0])
         reading["temperature"]=float(output.split(",")[1].split("Cext")[0])
@@ -132,4 +132,4 @@ class keithley(object):
         print("successfully connected")
       except:
         self.connected = False
-        print("error")
+        print("connection failed")

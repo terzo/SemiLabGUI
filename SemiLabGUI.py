@@ -27,7 +27,7 @@ def ramp_down():
   except:
     currV = ky.lastV
     print("WARNING: cannot read voltage")
-  ky.ramp(currV,0.0,tk_setCL.get(),data["options"]["StepSize"],data["options"]["StepWait"],True)
+  ky.ramp(currV,0.0,float(tk_setCL.get()),float(tk_setStepSizeDown.get()),float(tk_setStepWait.get()),True)
 
 def set_voltage():
     """Set the target voltage"""
@@ -47,7 +47,7 @@ def set_voltage():
     if volt>0.0:
       print("WARNING: positive value")
       return
-    ky.ramp(currV,volt,tk_setCL.get(),data["options"]["StepSize"],data["options"]["StepWait"],True)
+    ky.ramp(currV,volt,float(tk_setCL.get()),float(tk_setStepSizeUp.get()),float(tk_setStepWait.get()),True)
     
 def read_option(filename,option):
   #this method reads always the last value which is defined in the steering file
@@ -63,12 +63,12 @@ def read_option(filename,option):
   return value
 
 def close_app():
-  ramp_down()
-  ky.write(":OUTP 0")
-  ky.write(":SYST:ZCH 1")
-    
-  #leave program running until enter is pressed  
-  ky.write("trace:clear; feed:control next")
+  if ky.connected:
+    ramp_down()
+    ky.write(":OUTP 0")
+    ky.write(":SYST:ZCH 1")
+    #leave program running until enter is pressed
+    ky.write("trace:clear; feed:control next")
   tk_top.quit()
 
 def set_CurrentLimit():
@@ -88,7 +88,7 @@ def set_gpib():
       var_status.set("connected to GPIB::%i" % int(tk_setGPIB.get()))
       update_periodically()
     else: 
-      var_status.set("disconnected")
+      var_status.set("connection failed")
 
 def update_periodically():
     """Update the information from the Keathley system"""
@@ -138,25 +138,10 @@ data["options"]={}
 data["StartTime"]=time.time()
 data["CurrentTime"]=time.time()
 
-#here all the values are stored
-data["data"]["xdev"]=[]
-data["ycount"]=1
-data["data"]["y1dev"]=[]
-data["data"]["temp"]=[]
-data["data"]["tempdev"]=[]
-data["data"]["humid"]=[]
-data["data"]["humiddev"]=[]
-
 #define temp arrays for averaging later on  
 tempcurr = 0.0
 temptemp = 0.0
 temphumid = 0.0
-
-#options
-#define the most important variables for runing
-data["options"]["StepSize"]=float(read_option(sys.argv[1],"StepSize"))
-data["options"]["StepWait"]=float(read_option(sys.argv[1],"StepWait"))
-data["options"]["StepSizeDown"]=float(read_option(sys.argv[1],"StepSizeDown"))
 
 # now add the text field showing the status info. we use a Tk variable to keep
 # the status message so we can update it easily
@@ -205,73 +190,80 @@ tk_values.columnconfigure(1, weight=1)
 # and add the frame to the top frame
 tk_values.pack(fill=Tkinter.BOTH)
 
-# add the plot showing the temperature developement
-#canvas = FigureCanvasTkAgg(figure, master=tk_top)
-#canvas.show()
-#canvas.get_tk_widget().pack(fill=Tkinter.BOTH, expand=True)
-
-# add setting for voltage
-tk_volt = Tkinter.Frame()
-tk_labelvolt = Tkinter.Label(tk_volt, text="Set voltage: ")
-tk_labelvolt.pack(side=Tkinter.LEFT)
-volt = 0.0
-tk_setV = Tkinter.Spinbox(tk_volt, from_=-2000, to=0.0, value=volt)
-tk_setV.pack(fill=Tkinter.BOTH, side=Tkinter.LEFT, expand=True)
-tk_setvolt = Tkinter.Button(tk_volt, text="Set", command=set_voltage, padx=2, pady=2)
-tk_setvolt.pack(side=Tkinter.RIGHT)
-tk_volt.pack(fill=Tkinter.X)
+separator = Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN)
+separator.pack(fill=Tkinter.X, padx=5, pady=5)
 
 # add setting for the current limit
 tk_currlim = Tkinter.Frame()
-tk_labelcurrlim = Tkinter.Label(tk_currlim, text="Set Current Limit: ")
-tk_labelcurrlim.pack(side=Tkinter.LEFT)
+tk_label_up = Tkinter.Label(tk_currlim, text="Limit")
+tk_label_up.grid(row = 0, column = 1, sticky=(Tkinter.E,Tkinter.W))
+tk_label_up = Tkinter.Label(tk_currlim, text="Range")
+tk_label_up.grid(row = 0, column = 2, sticky=(Tkinter.E,Tkinter.W))
+tk_labelcurrlim = Tkinter.Label(tk_currlim, text="Set\nCurrent: ")
+tk_labelcurrlim.grid(row = 0, column = 0, rowspan = 2, sticky=(Tkinter.E,Tkinter.W))
 currentLimit = 5e-6
 tk_setCL = Tkinter.Spinbox(tk_currlim, from_=1e-9, to=1e-3, value=currentLimit)
-tk_setCL.pack(fill=Tkinter.BOTH, side=Tkinter.LEFT, expand=True)
+tk_setCL.grid(row = 1, column = 1, sticky=(Tkinter.E,Tkinter.W))
 currentRange = 20e-6
 tk_setCR = Tkinter.Spinbox(tk_currlim, from_=1e-9, to=1e-3, value=currentRange)
-tk_setCR.pack(fill=Tkinter.BOTH, side=Tkinter.LEFT, expand=True)
-tk_setlimit = Tkinter.Button(tk_currlim, text="Set", command=set_CurrentLimit,padx=2, pady=2)
-tk_setlimit.pack(side=Tkinter.RIGHT)
+tk_setCR.grid(row = 1, column = 2, sticky=(Tkinter.E,Tkinter.W))
+tk_setlimit = Tkinter.Button(tk_currlim, text="Set", command=set_CurrentLimit,padx=20, pady=10)
+tk_setlimit.grid(row = 0, column = 3, rowspan =2, sticky=(Tkinter.E,Tkinter.W))
 tk_currlim.pack(fill=Tkinter.X)
 
+separator = Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN)
+separator.pack(fill=Tkinter.X, padx=5, pady=5)
+
+# add setting for the ramping
+tk_ramp = Tkinter.Frame()
+tk_label_up = Tkinter.Label(tk_ramp, text="Step size up")
+tk_label_up.grid(row = 0, column = 1, sticky=(Tkinter.E,Tkinter.W))
+tk_label_up = Tkinter.Label(tk_ramp, text="Step size down")
+tk_label_up.grid(row = 0, column = 2, sticky=(Tkinter.E,Tkinter.W))
+tk_label_up = Tkinter.Label(tk_ramp, text="Step wait")
+tk_label_up.grid(row = 0, column = 3, sticky=(Tkinter.E,Tkinter.W))
+tk_labelramp = Tkinter.Label(tk_ramp, text="Ramping options: ")
+tk_labelramp.grid(row = 1, column = 0, sticky=(Tkinter.E,Tkinter.W))
+stepSizeUp_value = 1.0
+stepSizeDown_value = 1.0
+stepWait_value = 0.5
+tk_setStepSizeUp = Tkinter.Spinbox(tk_ramp, from_=1, to=10, value=stepSizeUp_value)
+tk_setStepSizeUp.grid(row = 1, column = 1, sticky=(Tkinter.E,Tkinter.W))
+tk_setStepSizeDown = Tkinter.Spinbox(tk_ramp, from_=1, to=10, value=stepSizeDown_value)
+tk_setStepSizeDown.grid(row = 1, column = 2, sticky=(Tkinter.E,Tkinter.W))
+tk_setStepWait = Tkinter.Spinbox(tk_ramp, from_=1, to=10, value=stepWait_value)
+tk_setStepWait.grid(row = 1, column = 3, sticky=(Tkinter.E,Tkinter.W))
+# add setting for voltage
+tk_labelvolt = Tkinter.Label(tk_ramp, text="Set voltage: ")
+tk_labelvolt.grid(row = 2, column = 0,sticky=(Tkinter.E,Tkinter.W))
+volt = 0.0
+tk_setV = Tkinter.Spinbox(tk_ramp, from_=-1100, to=0.0, value=volt)
+tk_setV.grid(row = 2, column = 1, columnspan = 3,  sticky=(Tkinter.E,Tkinter.W))
+tk_setvolt = Tkinter.Button(tk_ramp, text="Ramp\nVoltage", command=set_voltage, padx=20, pady=15)
+tk_setvolt.grid(row = 0, column = 4, rowspan =3, sticky=(Tkinter.E,Tkinter.W))
+tk_ramp.pack(fill=Tkinter.X)
+
+separator = Tkinter.Frame(height=2, bd=1, relief=Tkinter.SUNKEN)
+separator.pack(fill=Tkinter.X, padx=5, pady=5)
+
 # add setting for the gpib
-tk_gpib = Tkinter.Frame()
-tk_labelgpib = Tkinter.Label(tk_gpib, text="GPIB address: ")
+tk_bottom = Tkinter.Frame(tk_top)
+tk_labelgpib = Tkinter.Label(tk_bottom, text="GPIB address: ")
 tk_labelgpib.pack(side=Tkinter.LEFT)
 gpib_value = 24
-tk_setGPIB = Tkinter.Spinbox(tk_gpib, from_=1, to=30, value=gpib_value)
+tk_setGPIB = Tkinter.Spinbox(tk_bottom, from_=1, to=30, value=gpib_value)
 tk_setGPIB.pack(fill=Tkinter.BOTH, side=Tkinter.LEFT, expand=True)
-tk_connectGPIB = Tkinter.Button(tk_gpib, text="Connect", command=set_gpib,padx=2, pady=2)
-tk_connectGPIB.pack(side=Tkinter.RIGHT)
-tk_gpib.pack(fill=Tkinter.X)
-
+tk_connectGPIB = Tkinter.Button(tk_bottom, text="Connect", command=set_gpib,padx=20, pady=10)
+tk_connectGPIB.pack(side=Tkinter.LEFT)
 # and finally add a close button
-var_running = Tkinter.IntVar()
-var_extern = Tkinter.IntVar()
-tk_bottom = Tkinter.Frame(tk_top)
-tk_close = Tkinter.Button(tk_bottom, text="Close", command=close_app,
-                          padx=2, pady=2)
+tk_close = Tkinter.Button(tk_bottom, text="Close", command=close_app,padx=20, pady=10)
 tk_close.pack(side=Tkinter.RIGHT)
-# and a button to clear the plot
-#tk_clear = Tkinter.Button(tk_bottom, text="Clear Plot",
-#                          command=datapoints.clear, padx=2, pady=2)
-#tk_clear.pack(side=Tkinter.RIGHT)
-# the activate button should be a toggle button so we use a Checkbutton but
-# disable the checkbox indicator
-#tk_active = Tkinter.Checkbutton(tk_bottom, text="Active", variable=var_running,
-#                                command=set_active, indicatoron=False,
-#                                padx=3, pady=3)
-#tk_active.pack(side=Tkinter.LEFT)
-# and we want a checkbox to switch between internal and external temperature
-# control
-#tk_extern = Tkinter.Checkbutton(tk_bottom, text="Extern", variable=var_extern,
-#                                command=set_extern)
-#tk_extern.pack(side=Tkinter.LEFT)
+
 tk_bottom.pack(side=Tkinter.BOTTOM, fill=Tkinter.X)
 
 volt_value.set("0.0")
 set_CurrentLimit()
+var_status.set("disconnected")
 
 ky = keithley()
 
