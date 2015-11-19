@@ -5,6 +5,7 @@ import math
 import time
 import random
 import array
+import tkFont
 from keithley import *
 
 dryrun=True
@@ -161,19 +162,19 @@ tk_values = Tkinter.Frame(tk_top)
 tk_label = Tkinter.Label(tk_values, text="Voltage: ")
 tk_label.grid(row=0, column=0, sticky=Tkinter.W)
 volt_value = Tkinter.StringVar()
-tk_value = Tkinter.Label(tk_values, textvariable=volt_value, anchor=Tkinter.E, relief=Tkinter.SUNKEN, width=10)
+tk_value = Tkinter.Label(tk_values, textvariable=volt_value, anchor=Tkinter.E, relief=Tkinter.SUNKEN, width=10, font=tkFont.Font(size=18))
 tk_value.grid(row=0, column=1, sticky=(Tkinter.E, Tkinter.W))
 
 tk_label = Tkinter.Label(tk_values, text="Current: ")
 tk_label.grid(row=1, column=0, sticky=Tkinter.W)
 curr_value = Tkinter.StringVar()
-tk_value = Tkinter.Label(tk_values, textvariable=curr_value, anchor=Tkinter.E, relief=Tkinter.SUNKEN, width=10)
+tk_value = Tkinter.Label(tk_values, textvariable=curr_value, anchor=Tkinter.E, relief=Tkinter.SUNKEN, width=10,font=tkFont.Font(size=18))
 tk_value.grid(row=1, column=1, sticky=(Tkinter.E, Tkinter.W))
 
 tk_label = Tkinter.Label(tk_values, text="Current Limit: ")
 tk_label.grid(row=2, column=0, sticky=Tkinter.W)
 currLimit_value = Tkinter.StringVar()
-tk_value = Tkinter.Label(tk_values, textvariable=currLimit_value, anchor=Tkinter.E, relief=Tkinter.SUNKEN, width=10)
+tk_value = Tkinter.Label(tk_values, textvariable=currLimit_value, anchor=Tkinter.E, relief=Tkinter.SUNKEN, width=10,font=tkFont.Font(size=18) )
 tk_value.grid(row=2, column=1, sticky=(Tkinter.E, Tkinter.W))
 
 #tk_label = Tkinter.Label(tk_values, text="Temp: ")
@@ -261,12 +262,12 @@ tk_labelgpib = Tkinter.Label(tk_bottom, text="GPIB address: ")
 tk_labelgpib.pack(side=Tkinter.LEFT)
 gpib_value = Tkinter.StringVar()
 gpib_value.set(27)
-tk_setGPIB = Tkinter.Spinbox(tk_bottom, from_=1, to=30, textvariable=gpib_value, width=5)
+tk_setGPIB = Tkinter.Spinbox(tk_bottom, from_=1, to=30, textvariable=gpib_value, width=5, font=tkFont.Font(size=10))
 tk_setGPIB.pack(fill=Tkinter.BOTH, side=Tkinter.LEFT, expand=True)
-tk_connectGPIB = Tkinter.Button(tk_bottom, text="Connect", command=set_gpib,padx=20, pady=10)
+tk_connectGPIB = Tkinter.Button(tk_bottom, text="Connect", command=set_gpib,padx=20, pady=2)
 tk_connectGPIB.pack(side=Tkinter.LEFT)
 # and finally add a close button
-tk_close = Tkinter.Button(tk_bottom, text="Close", command=close_app,padx=20, pady=10)
+tk_close = Tkinter.Button(tk_bottom, text="Close", command=close_app,padx=20, pady=2)
 tk_close.pack(side=Tkinter.RIGHT)
 
 tk_bottom.pack(side=Tkinter.BOTTOM, fill=Tkinter.X)
