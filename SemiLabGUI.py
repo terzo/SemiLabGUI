@@ -65,6 +65,7 @@ def ramp_down():
 def set_voltage3():
     global abort
     global data
+
     try:
         # if we cannot convert the value to float we don't do anything
         volt = float(tk_setV.get())
@@ -184,7 +185,6 @@ def set_voltage4():
     abort=False
     threading.Thread(target=set_voltage3,args=()).start()
     #update_periodically()
-
 
 def read_option(filename,option):
   #this method reads always the last value which is defined in the steering file
