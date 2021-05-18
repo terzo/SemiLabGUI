@@ -6,7 +6,7 @@ xName: t
 y1Name: Is
 
 Location: MPP
-Instrument: Keithley 6517B
+Instrument: Keithley 2400
 GPIB: 24
 
 StepSize: 1
