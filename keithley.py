@@ -3,7 +3,6 @@ import os
 import math
 import time
 import random
-import ROOT
 import array
 #import visa
 import pyvisa as visa
@@ -65,7 +64,7 @@ class keithley(object):
           output=self._inst.read()
         else:
           self.report("READ?")
-          output="%f, %f, %f, %f, %f" %(random.random(),random.random()*1e-6,random.random(),random.random(),random.random())
+          output="%f, %f, %f, %f, %f" %(0,random.random()*1e-6,random.random(),random.random(),random.random())
         #parse the values
         self.report(output)
         reading["voltage"]=float(output.split(",")[0])
