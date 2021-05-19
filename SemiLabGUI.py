@@ -45,7 +45,6 @@ def ramp(start,stop,currentlimit,stepsize=1.,wait=0.,force=False):
                 #keithley switched off
                 #so return to caller
                 return
-
         time.sleep(wait)
     return
 
@@ -92,15 +91,118 @@ def save_data():
     for i in range(len(data["data"]["x"])):
         file.write("%e %e " % (data["data"]["x"][i],data["data"]["xdev"][i]))
         for j in range(1,data["ycount"]+1):
-            file.write("%e %e\n" % (data["data"]["y%d" % j][i],data["data"]["y%ddev" % j][i]))
+            file.write("%e %e " % (data["data"]["y%d" % j][i],data["data"]["y%ddev" % j][i]))
         #file.write("%.1f %.1f\n" % (data["data"]["temp"][i],data["data"]["humid"][i]))
+        file.write("%.1f\n" % (data["data"]["time"][i]))
     file.close()
     return
+
+def idle(file):
+    global abort
+    global data
+    global nAverage_var
+    global starttime
+
+    current_limit = float(tk_setCL.get())
+    settle_time = float(tk_setStepWait.get())
+
+    try:
+        nAverage = int(nAverage_var.get())
+    except ValueError:
+        print("Cannot convert to int")
+        return
+
+    try:
+        idletime = int(idletime_var.get())
+    except ValueError:
+        print("Cannot convert to int")
+        return
+
+    idlestarttime=time.time()
+    curidletime = time.time() - idlestarttime
+
+    print("Starting idle measurement")
+    try :
+        while curidletime<idletime:
+            print("Current time is:")
+            print(curidletime)
+            #define temp arrays for averaging later on
+            tempvolt=[]
+            tempcurrs=[]
+            temptemps=[]
+            temphumids=[]
+            #wait for the currents to settle
+            print("Waiting %.1f seconds..." % (settle_time))
+            time.sleep(settle_time)
+            print("measuring...")
+            for i in range(nAverage):
+                output=ky.read()
+                #check everytime for current limit
+                if abs(output["current"])>abs(current_limit):
+                    print("CURRENT LIMIT! Ramping down!")
+                    data["EndMessage"]="CURRENT LIMIT! Ramping down!"
+                    abort=True
+                    break
+                #fill the temp values
+                tempvolt.append(output["voltage"])
+                tempcurrs.append(output["current"])
+                temptemps.append(output["temperature"])
+                temphumids.append(output["humid"])
+            #if current limit is reached
+            if abort:
+                print("Run Stopped.")
+                break
+
+            curidletime = time.time()-idlestarttime
+            curtime = time.time()-starttime
+            #fill the real values
+            data["data"]["time"].append(curtime)
+            data["data"]["x"].append(mean(tempvolt))
+            data["data"]["xdev"].append(std_dev(tempvolt))
+            data["data"]["y1"].append(mean(tempcurrs))
+            data["data"]["y1dev"].append(std_dev(tempcurrs))
+            data["data"]["temp"].append(mean(temptemps))
+            data["data"]["tempdev"].append(std_dev(temptemps))
+            data["data"]["humid"].append(mean(temphumids))
+            data["data"]["humiddev"].append(std_dev(temphumids))
+            #for screen control
+            print("Voltage %f, Mean: %.3e, StdDev: %.3e, Temp: %.1f, Humid: %.1f" % (data["data"]["x"][-1],data["data"]["y1"][-1],data["data"]["y1dev"][-1],data["data"]["temp"][-1],data["data"]["humid"][-1]))
+            volt_value.set(data["data"]["x"][-1])
+            curr_value.set(data["data"]["y1"][-1])
+
+            if file is not None:
+                file.write("%e %e " % (data["data"]["x"][-1],data["data"]["xdev"][-1]))
+                file.write("%e %e " % (data["data"]["y1"][-1],data["data"]["y1dev"][-1]))
+                file.write("%e\n" % (data["data"]["time"][-1]))
+
+            if curtime>idletime:
+                data["EndMessage"]="Reached time limit without problems!"
+            #do some graphics output
+            # data["canvas"].cd()
+            # ROOT.TGraphErrors.Delete(data["currgraph"])
+            # data["currgraph"]=ROOT.TGraphErrors(len(data["data"]["x"]),array.array("f",data["data"]["x"]),array.array("f",data["data"]["y1"]),array.array("f",data["data"]["xdev"]),array.array("f",data["data"]["y1dev"]))
+            # #data["currgraph"].SetTitle("I-V curve: %s" % data["StructureName"])
+            # data["currgraph"].GetXaxis().SetTitle("Voltage [V]")
+            # data["currgraph"].GetYaxis().SetTitle("current [A]")
+            # data["currgraph"].Draw("APL")
+            # threading.Thread(target=data["canvas"].Update,args=()).start()
+
+            ax.set_title('I - T')
+            ax.errorbar(data["data"]["time"],data["data"]["y1"],xerr=data["data"]["xdev"],yerr=data["data"]["y1dev"])
+            canvas.draw()
+            ax.clear()
+
+    except KeyboardInterrupt:
+        #cought the keyboard abort signal
+        print("You pressed Ctrl-C")
+        endmessage="You pressed Ctrl-C"
+        print("Powering down...")
 
 def set_voltage3():
     global abort
     global data
     global nAverage_var
+    global starttime
 
     try:
         # if we cannot convert the value to float we don't do anything
@@ -144,6 +246,7 @@ def set_voltage3():
     ramp(currV,start_volt,float(tk_setCL.get()),float(tk_setStepSizeUp.get()),0.5,False)
 
     #here all the values are stored
+    data["data"]["time"]=[]
     data["data"]["x"]=[]
     data["data"]["xdev"]=[]
     data["ycount"]=1
@@ -160,7 +263,7 @@ def set_voltage3():
     # data["currgraph"].Draw("APL")
 
     #get the array of voltages for the measurements
-    allvoltages=ky.get_ramparray(currV,volt,step)
+    allvoltages=ky.get_ramparray(start_volt,volt,step)
 
     settle_time = float(tk_setStepWait.get())
     current_limit = float(tk_setCL.get())
@@ -177,6 +280,8 @@ def set_voltage3():
         file=open(fullfilename,'w')
     except:
         print("WARNING: file name not valid. Data will not be saved.")
+
+    starttime = time.time()
 
     try :
         for voltage in allvoltages :
@@ -196,6 +301,8 @@ def set_voltage3():
                 output=ky.read()
                 #check everytime for current limit
                 if abs(output["current"])>abs(current_limit):
+                    print("CURRENT LIMIT! Ramping down!")
+                    data["EndMessage"]="CURRENT LIMIT! Ramping down!"
                     abort=True
                     break
                 #fill the temp values
@@ -204,10 +311,12 @@ def set_voltage3():
                 temphumids.append(output["humid"])
             #if current limit is reached
             if abort:
-                print("CURRENT LIMIT! Ramping down!")
-                data["EndMessage"]="CURRENT LIMIT! Ramping down!"
+                print("Run Stopped.")
                 break
+
+            curtime = time.time()-starttime
             #fill the real values
+            data["data"]["time"].append(curtime)
             data["data"]["x"].append(voltage)
             data["data"]["xdev"].append(0.0)
             data["data"]["y1"].append(mean(tempcurrs))
@@ -223,7 +332,8 @@ def set_voltage3():
 
             if file is not None:
                 file.write("%e %e " % (data["data"]["x"][-1],data["data"]["xdev"][-1]))
-                file.write("%e %e\n" % (data["data"]["y1"][-1],data["data"]["y1dev"][-1]))
+                file.write("%e %e " % (data["data"]["y1"][-1],data["data"]["y1dev"][-1]))
+                file.write("%e\n" % (data["data"]["time"][-1]))
 
             if voltage==allvoltages[-1]:
                 data["EndMessage"]="Reached StopV without problems!"
@@ -247,6 +357,9 @@ def set_voltage3():
         print("You pressed Ctrl-C")
         endmessage="You pressed Ctrl-C"
         print("Powering down...")
+
+    if int(idletime_var.get())>0 and not abort:
+        idle(file)
 
     if file is not None:
         file.close()
@@ -324,7 +437,6 @@ def browse():
 
 def update_periodically():
     """Update the information from the Keathley system"""
-    global starttime
     # we want to do this every second so register a callback after one second
     # with Tk
     tk_top.after(2000, update_periodically)
@@ -335,8 +447,8 @@ def update_periodically():
     if starttime is None:
         starttime = curtime
     curtime -= starttime
-    data["canvas"].Modified()
-    data["canvas"].Update()
+    # data["canvas"].Modified()
+    # data["canvas"].Update()
     # try:
     #     output= ky.read()
     #     #parse the values
@@ -435,9 +547,9 @@ separator.pack(fill=Tkinter.X, padx=5, pady=5)
 # add setting for the current limit
 tk_currlim = Tkinter.Frame(tk_left)
 tk_label_up = Tkinter.Label(tk_currlim, text="Limit")
-tk_label_up.grid(row = 0, column = 1, sticky=(Tkinter.E,Tkinter.W))
+tk_label_up.grid(row = 0, column = 1, sticky=(Tkinter.W))
 tk_label_up = Tkinter.Label(tk_currlim, text="Range")
-tk_label_up.grid(row = 0, column = 2, sticky=(Tkinter.E,Tkinter.W))
+tk_label_up.grid(row = 0, column = 3, sticky=(Tkinter.W))
 tk_labelcurrlim = Tkinter.Label(tk_currlim, text="Set Current: ", width=12)
 tk_labelcurrlim.grid(row =1, column = 0, rowspan = 1, sticky=(Tkinter.E,Tkinter.W))
 currentLimit_var = Tkinter.StringVar()
@@ -490,14 +602,20 @@ startV_var = Tkinter.StringVar()
 startV_var.set(0.0)
 volt_var = Tkinter.StringVar()
 volt_var.set(0.0)
+idletime_var = Tkinter.StringVar()
+idletime_var.set(0.0)
 tk_label_vstart = Tkinter.Label(tk_ramp, text="Start")
 tk_label_vstart.grid(row = 2, column = 1, sticky=(Tkinter.W))
 tk_label_vstop = Tkinter.Label(tk_ramp, text="Stop")
-tk_label_vstop.grid(row = 2, column = 3, sticky=(Tkinter.W))
+tk_label_vstop.grid(row = 2, column = 2, sticky=(Tkinter.W))
+tk_label_vstop = Tkinter.Label(tk_ramp, text="Idle")
+tk_label_vstop.grid(row = 2, column = 4, sticky=(Tkinter.W))
 tk_startV = Tkinter.Spinbox(tk_ramp, from_=-1100, to=0.0, textvariable=startV_var, width=1)
-tk_startV.grid(row = 3, column = 1, columnspan = 2,  sticky=(Tkinter.E,Tkinter.W))
+tk_startV.grid(row = 3, column = 1, columnspan = 1,  sticky=(Tkinter.E,Tkinter.W))
 tk_setV = Tkinter.Spinbox(tk_ramp, from_=-1100, to=0.0, textvariable=volt_var, width=1)
-tk_setV.grid(row = 3, column = 3, columnspan = 2,  sticky=(Tkinter.E,Tkinter.W))
+tk_setV.grid(row = 3, column = 2, columnspan = 2,  sticky=(Tkinter.E,Tkinter.W))
+tk_idle = Tkinter.Spinbox(tk_ramp, from_=0, to=1e6, textvariable=idletime_var, width=1)
+tk_idle.grid(row = 3, column = 4, columnspan = 1,  sticky=(Tkinter.E,Tkinter.W))
 tk_setvolt = Tkinter.Button(tk_ramp, text="Ramp\nVoltage", command=set_voltage4, padx=12, pady=15, height = 3, width = 5, state=Tkinter.DISABLED)
 tk_setvolt.grid(row = 0, column = 5, rowspan =4, sticky=(Tkinter.E,Tkinter.W,Tkinter.S))
 tk_ramp.pack(fill=Tkinter.X)
