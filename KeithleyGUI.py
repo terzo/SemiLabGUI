@@ -343,7 +343,7 @@ class KeithleyGUI(tk.Frame):
         self.plot = plot
 
     def ramp_down(self):
-        self.ramp(float(self.valueframe.volt_value.get()),0.0,float(self.currentframe.tk_setCL.get()),float(self.rampframe.stepSizeDown_var.get()),0.1,True)
+        self.ramp(float(self.valueframe.volt_value.get()),0.0,float(self.currentframe.tk_setCL.get()),float(self.rampframe.stepSizeDown_var.get()),0.5,True)
 
         self.ky.output_off()
         self.rampframe.tk_setvolt["text"]="Ramp\nVoltage"
@@ -356,16 +356,18 @@ class KeithleyGUI(tk.Frame):
         for v in voltages:
             self.ky.set_voltage(v)
             self.valueframe.volt_value.set(v)
+            time.sleep(wait)
             if not force:
                 #check for current limit unless ramping is forced
                 if abs( self.ky.read()["current"]) > abs(currentlimit) or self.abort is True:
                     print("Current Limit while ramping!! Switching off!")
                     #force shutdown!
-                    self.ramp(v,0.0,currentlimit,stepsize,wait,True)
+                    #self.ramp(v,0.0,currentlimit,stepsize,wait,True)
+                    self.ramp_down()
+                    self.abort = True
                     #keithley switched off
                     #so return to caller
                     return
-            time.sleep(wait)
         return
 
     def idle(self, file):
@@ -407,7 +409,7 @@ class KeithleyGUI(tk.Frame):
                 if abs(output["current"])>abs(current_limit):
                     print("CURRENT LIMIT! Ramping down!")
                     self.data["EndMessage"]="CURRENT LIMIT! Ramping down!"
-                    abort=True
+                    self.abort=True
                     break
                 #fill the temp values
                 tempvolt.append(output["voltage"])
@@ -458,6 +460,9 @@ class KeithleyGUI(tk.Frame):
         except ValueError:
             print("Cannot convert to float")
             return
+
+        self.ky.output_on()
+        
         # ramp to target start voltage 1
         try:
             currV = self.ky.read()["voltage"]
@@ -489,9 +494,9 @@ class KeithleyGUI(tk.Frame):
         else:
             step = float(self.rampframe.stepSizeDown_var.get())
 
-        self.ky.output_on()
-
         self.ramp(currV,start_volt,float(self.currentframe.tk_setCL.get()),step,0.5,False)
+        if self.abort:
+            return
 
         #here all the values are stored
         self.data["data"]["time"]=[]
@@ -507,7 +512,7 @@ class KeithleyGUI(tk.Frame):
 
         #get the array of voltages for the measurements
         allvoltages=self.ky.get_ramparray(start_volt,volt,step)
-
+        
         settle_time = float(self.rampframe.stepWait_var.get())
         current_limit = float(self.currentframe.tk_setCL.get())
 
@@ -545,7 +550,7 @@ class KeithleyGUI(tk.Frame):
                 if abs(output["current"])>abs(current_limit):
                     print("CURRENT LIMIT! Ramping down!")
                     self.data["EndMessage"]="CURRENT LIMIT! Ramping down!"
-                    abort=True
+                    self.abort=True
                     break
                 #fill the temp values
                 tempcurrs.append(output["current"])
@@ -591,6 +596,7 @@ class KeithleyGUI(tk.Frame):
 
         if file is not None:
             file.close()
+            
         self.ramp_down()
 
     # Validating functions

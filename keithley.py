@@ -9,7 +9,7 @@ import pyvisa as visa
 
 class keithley(object):
     connected = False
-    dryrun=True
+    dryrun=False
     verbose=True
     lastV = 0.0
     id="2400"
@@ -149,7 +149,7 @@ class keithley(object):
         rm = visa.ResourceManager()
         self.report("connecting to GPIB address:%i" % GPIB_address)
         if not self.dryrun:
-          self._inst = rm.open_resource("GPIB::%i" % int(GPIB_address))
+          self._inst = rm.open_resource("GPIB1::%i" % int(GPIB_address))
         self.write("*RST")
         self.write("*IDN?")
         if not self.dryrun:
