@@ -7,7 +7,7 @@ y1Name: Is
 
 Location: IFAE
 Instrument: Keithley 2400
-GPIB: 24
+GPIB: 14
 
 StepSize: 1
 StepSizeDown: 1
