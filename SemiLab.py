@@ -1,7 +1,18 @@
+#!/usr/bin/env python
+
 import tkinter as tk
 from KeithleyGUI import *
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+__author__ = "Stefano Terzo"
+#__copyright__ = "Copyright 2021"
+__credits__ = ["Stefano Terzo"]
+#__license__ = "GPL"
+__version__ = "1.0.0"
+__maintainer__ = "Stefano Terzo"
+__email__ = "stefano.terzo@cern.ch"
+__status__ = "Production"
 
 class Plot(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
@@ -11,6 +22,15 @@ class Plot(tk.Frame):
         self.ax = figure.add_subplot(111)
         self.canvas = FigureCanvasTkAgg(figure, self)
         self.canvas.get_tk_widget().pack(fill=tk.Y, side=tk.LEFT)
+        self.updated = False
+
+    def update(self):
+        if self.updated:
+            self.canvas.draw()
+            self.ax.clear()
+            self.updated = False
+        # schedule another timer
+        self.after(100, self.update)
 
 if __name__ == "__main__":
 
@@ -28,6 +48,7 @@ if __name__ == "__main__":
     tk_right.pack(side=tk.LEFT, fill=tk.BOTH)
 
     tk_left.setplot(tk_right)
+    tk_right.update()
 
     tk_top.mainloop()
 

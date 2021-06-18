@@ -3,8 +3,16 @@ import tkinter.font as tkFont
 from keithley import *
 import math
 import time
-
 import threading
+
+__author__ = "Stefano Terzo"
+#__copyright__ = "Copyright 2021"
+__credits__ = ["Stefano Terzo"]
+#__license__ = "GPL"
+__version__ = "1.0.0"
+__maintainer__ = "Stefano Terzo"
+__email__ = "stefano.terzo@cern.ch"
+__status__ = "Production"
 
 def mean(array):
     #straight foward!
@@ -83,28 +91,29 @@ class CurrentFrame(tk.Frame):
         tk_labelcurrlim = tk.Label(self, text="Set Current: ", width=12)
         tk_labelcurrlim.grid(row =1, column = 0, rowspan = 1, sticky=(tk.E,tk.W))
         self.currentLimit_var = tk.StringVar()
-        self.tk_setCL = tk.Spinbox(self, from_=1e-9, to=1e-3, textvariable=self.currentLimit_var, increment=10e-6, width=17)
+        self.currentLimit_var.set(1e-4)
+        self.tk_setCL = tk.Spinbox(self, from_=1e-9, to=1e-3, textvariable=self.currentLimit_var, increment=1e-6, width=17)
         self.tk_setCL.config(validate = 'key', validatecommand = parent.vfloat)
         self.tk_setCL.grid(row = 1, column = 1, columnspan=2, sticky=(tk.E,tk.W))
-        currentRange_var = tk.StringVar()
-        currentRange_var.set(10e-6)
-        self.tk_setCR = tk.Spinbox(self, values=(10e-5,10e-6,10e-7,10e-8,10e-9), textvariable=currentRange_var, width=17)
+        self.currentRange_var = tk.StringVar()
+        self.tk_setCR = tk.Spinbox(self, values=(10e-1,10e-2,10e-3,10e-4,10e-5,10e-6,10e-7,10e-8,10e-9), textvariable=self.currentRange_var, width=17, state='readonly')
+        self.tk_setCR.config(validate = 'key', validatecommand = parent.vfloat)
+        self.currentRange_var.set(0.0001)
         self.tk_setCR.config(validate = 'key', validatecommand = parent.vfloat)
         self.tk_setCR.grid(row = 1, column = 3, columnspan=2, sticky=(tk.E,tk.W))
-        tk_setlimit = tk.Button(self, text="Set", command=self.set_clicked,padx=20, pady=10)
-        tk_setlimit.grid(row = 0, column = 5, rowspan=2, sticky=(tk.E))
+        self.tk_setlimit = tk.Button(self, text="Set", command=self.set_clicked,padx=20, pady=10, state=tk.DISABLED)
+        self.tk_setlimit.grid(row = 0, column = 5, rowspan=2, sticky=(tk.E))
 
     def set_clicked(self):
         """Set the target voltage"""
         try:
             # if we cannot convert the value to float we don't do anything
-            curr = float(self.currentLimit_var.get())
-            self.currentLimit_var.set(curr)
+            currLim = float(self.currentLimit_var.get())
+            currRange = float(self.currentRange_var.get())
+            self.tk_setCL.config(to=currRange)
+            self.parent.ky.set_limits(currLim,currRange)
         except ValueError:
             return
-
-    def set_currentlimit(self,current):
-        self.currentLimit_var.set(10e-6)
 
 class RampFrame(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
@@ -130,10 +139,10 @@ class RampFrame(tk.Frame):
         self.stepWait_var.set(0.5)
         self.nAverage_var = tk.StringVar()
         self.nAverage_var.set(10)
-        tk_setStepSizeUp = tk.Spinbox(self, from_=1, to=10, textvariable=self.stepSizeUp_var, increment=1, width=7)
+        tk_setStepSizeUp = tk.Spinbox(self, from_=0.0, to=10, textvariable=self.stepSizeUp_var, increment=1, width=7)
         tk_setStepSizeUp.config(validate = 'key', validatecommand = parent.vfloat)
         tk_setStepSizeUp.grid(row = 1, column = 1, sticky=(tk.E,tk.W))
-        tk_setStepSizeDown = tk.Spinbox(self, from_=1, to=10, textvariable=self.stepSizeDown_var, increment=1, width=7)
+        tk_setStepSizeDown = tk.Spinbox(self, from_=0.0, to=10, textvariable=self.stepSizeDown_var, increment=1, width=7)
         tk_setStepSizeDown.config(validate = 'key', validatecommand = parent.vfloat)
         tk_setStepSizeDown.grid(row = 1, column = 2, sticky=(tk.E,tk.W))
         tk_setStepWait = tk.Spinbox(self, from_=0.0, to=60.0, textvariable=self.stepWait_var, increment=0.1,width=7)
@@ -259,12 +268,12 @@ class BottomFrame(tk.Frame):
     def set_gpib(self):
         #initialize and identify
         #print(tk_setGPIB.get())
-        currentlimit = float(self.parent.currentframe.tk_setCR.get())
-        self.parent.ky.connect(int(self.gpib_value.get()),currentlimit)
+        currentlimit = float(self.parent.currentframe.currentLimit_var.get())
+        currentrange = float(self.parent.currentframe.currentRange_var.get())
+        self.parent.ky.connect(int(self.gpib_value.get()),currentlimit,currentrange)
         if self.parent.ky.connected:
             self.parent.statusframe.set_status("connected to GPIB::%i" % int(self.gpib_value.get()))
-            self.parent.currentframe.tk_setCR.config(state=tk.DISABLED)
-            self.parent.currentframe.tk_setCL.config(to=self.parent.currentframe.tk_setCR.get())
+            self.parent.currentframe.tk_setlimit.config(state=tk.NORMAL)
             self.parent.rampframe.tk_setvolt.config(state=tk.NORMAL)
         else:
             self.parent.statusframe.set_status("connection failed")
@@ -320,7 +329,6 @@ class KeithleyGUI(tk.Frame):
 
         self.currentframe = CurrentFrame(self)
         self.currentframe.pack(fill=tk.X)
-        self.currentframe.set_currentlimit(10e-6)
 
         separator = tk.Frame(self, height=2, bd=1, relief=tk.SUNKEN)
         separator.pack(fill=tk.X, padx=5, pady=5)
@@ -343,7 +351,13 @@ class KeithleyGUI(tk.Frame):
         self.plot = plot
 
     def ramp_down(self):
-        self.ramp(float(self.valueframe.volt_value.get()),0.0,float(self.currentframe.tk_setCL.get()),float(self.rampframe.stepSizeDown_var.get()),0.5,True)
+        step = 10.
+        try:
+            step = float(self.rampframe.stepSizeDown_var.get())
+        except ValueError:
+            print("Cannot convert to float")
+
+        self.ramp(float(self.valueframe.volt_value.get()),0.0,0.0,step,0.5,True)
 
         self.ky.output_off()
         self.rampframe.tk_setvolt["text"]="Ramp\nVoltage"
@@ -372,16 +386,15 @@ class KeithleyGUI(tk.Frame):
 
     def idle(self, file):
 
-        current_limit = float(self.currentframe.tk_setCL.get())
-        settle_time = float(self.rampframe.stepWait_var.get())
-
         try:
-            nAverage = int(self.rampframe.nAverage_var.get())
+            current_limit = float(self.currentframe.tk_setCL.get())
+            settle_time = float(self.rampframe.stepWait_var.get())
         except ValueError:
-            print("Cannot convert to int")
+            print("Cannot convert to float")
             return
 
         try:
+            nAverage = int(self.rampframe.nAverage_var.get())
             idletime = int(self.rampframe.idletime_var.get())
         except ValueError:
             print("Cannot convert to int")
@@ -450,42 +463,28 @@ class KeithleyGUI(tk.Frame):
             if self.plot is not None:
                 self.plot.ax.set_title('I - T')
                 self.plot.ax.errorbar(self.data["data"]["time"],self.data["data"]["y1"],xerr=self.data["data"]["xdev"],yerr=self.data["data"]["y1dev"])
-                self.plot.canvas.draw()
-                self.plot.ax.clear()
+                self.plot.updated = True
+                # self.plot.canvas.draw()
+                # self.plot.ax.clear()
 
     def set_voltage(self):
+        # if we cannot convert the value to float we don't do anything
         try:
-            # if we cannot convert the value to float we don't do anything
             start_volt = float(self.rampframe.startV_var.get())
+            volt = float(self.rampframe.volt_var.get())
         except ValueError:
             print("Cannot convert to float")
             return
 
+        # We have to turn the Keithley on before we read the Keythley otherwise we get an error
         self.ky.output_on()
-        
-        # ramp to target start voltage 1
+
         try:
             currV = self.ky.read()["voltage"]
         except:
             print("Cannot read voltage")
             return
         if start_volt>0.0:
-            print("WARNING: positive starting value")
-            return
-
-        try:
-            # if we cannot convert the value to float we don't do anything
-            volt = float(self.rampframe.volt_var.get())
-        except ValueError:
-            print("Cannot convert to float")
-            return
-            # ramp to target voltage 1
-        try:
-            currV = self.ky.read()["voltage"]
-        except:
-            print("Cannot read voltage")
-            return
-        if volt>0.0:
             print("WARNING: positive value")
             return
 
@@ -533,7 +532,6 @@ class KeithleyGUI(tk.Frame):
 
         for voltage in allvoltages :
             #power to the right voltage
-            #ky.write(":SOUR:VOLT %.3f" % (voltage))
             self.ky.set_voltage(voltage)
             self.valueframe.volt_value.set(voltage)
             #define temp arrays for averaging later on
@@ -588,8 +586,9 @@ class KeithleyGUI(tk.Frame):
             if self.plot is not None:
                 self.plot.ax.set_title('I - V')
                 self.plot.ax.errorbar(self.data["data"]["x"],self.data["data"]["y1"],xerr=self.data["data"]["xdev"],yerr=self.data["data"]["y1dev"])
-                self.plot.canvas.draw()
-                self.plot.ax.clear()
+                self.plot.updated = True
+                # self.plot.canvas.draw()
+                # self.plot.ax.clear()
 
         if int(self.rampframe.idletime_var.get())>0 and not self.abort:
             self.idle(file)

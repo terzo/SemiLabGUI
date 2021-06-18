@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import tkinter as Tkinter
 import threading
 import matplotlib.pyplot as plt
@@ -11,6 +13,15 @@ import random
 import array
 import tkinter.font as tkFont
 from keithley import *
+
+__author__ = "Stefano Terzo"
+#__copyright__ = "Copyright 2021"
+__credits__ = ["Stefano Terzo"]
+#__license__ = "GPL"
+__version__ = "1.0.0"
+__maintainer__ = "Stefano Terzo"
+__email__ = "stefano.terzo@cern.ch"
+__status__ = "Production"
 
 verbose=True
 #verbose=False

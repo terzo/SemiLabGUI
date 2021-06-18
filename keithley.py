@@ -7,9 +7,18 @@ import array
 #import visa
 import pyvisa as visa
 
+__author__ = "Michael Beimforde, Stefano Terzo"
+#__copyright__ = "Copyright 2015"
+__credits__ = ["Stefano Terzo"]
+#__license__ = "GPL"
+__version__ = "1.0.0"
+__maintainer__ = "Stefano Terzo"
+__email__ = "stefano.terzo@cern.ch"
+__status__ = "Production"
+
 class keithley(object):
     connected = False
-    dryrun=False
+    dryrun=True
     verbose=True
     lastV = 0.0
     id="2400"
@@ -40,7 +49,7 @@ class keithley(object):
           self.write("FETCH?")
           output=self._inst.read()
         else:
-          report("FETCH?")
+          self.report("FETCH?")
           output="%e, %e, +0" %(random.random()*1.e-5,random.random())
         #parse the values
         reading["first"]=float(output.split(",")[0])
@@ -137,26 +146,30 @@ class keithley(object):
         self.lastV = voltage
         return self.lastV
 
+    def set_limits(self,current,currentRange):
+        self.write(":SENS:CURR:RANG %.2e" % currentRange)
+
     def output_on(self):
-      self.write(":OUTP 1")
+        self.write(":OUTP 1")
 
     def output_off(self):
-      self.write(":OUTP 0")
+        self.write(":OUTP 0")
 
-    def connect(self, GPIB_address, currentRange):
+    def connect(self, GPIB_address, currLim, currentRange):
       try:
         #initialize and identify
         rm = visa.ResourceManager()
         self.report("connecting to GPIB address:%i" % GPIB_address)
         if not self.dryrun:
           self._inst = rm.open_resource("GPIB1::%i" % int(GPIB_address))
+          #"TCPIP::192.168.1.221::INSTR"
         self.write("*RST")
         self.write("*IDN?")
         if not self.dryrun:
           self.id=self._inst.read()
         #put the keithley in the right operating mode
         self.write(":SOUR:FUNC VOLT")
-        self.write(":SENS:CURR:RANG %.2e" % currentRange)
+        self.set_limits(currLim, currentRange)
         if self.id.find("2400")!=-1:
           self.write(":SOUR:VOLT:RANG 200")
           self.write(":FORM:ELEM VOLT,CURR")
