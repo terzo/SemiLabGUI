@@ -5,7 +5,7 @@ OutputFolder: Z:\Measurements\CIS-Productions\CIS2\W10-IBL2\KIT2e15
 xName: t
 y1Name: Is
 
-Location: MPP
+Location: IFAE
 Instrument: Keithley 2400
 GPIB: 24
 
